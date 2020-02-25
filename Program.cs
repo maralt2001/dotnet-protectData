@@ -13,26 +13,27 @@ namespace DataProtector
             var serviceCollection = new ServiceCollection();
             serviceCollection.AddDataProtection();
             ServiceProvider services = serviceCollection.BuildServiceProvider();
-
+            var user = new Person { Name = "markus", password = "hallo" };
             // create an instance of MyClass using the service provider
-            Protection instance = ActivatorUtilities.CreateInstance<Protection>(services);
+            Protection<Person> instance = ActivatorUtilities.CreateInstance<Protection<Person>>(services, user);
             instance.RunSample();
         }
 
-        public class Protection
+        public class Protection<T>
         {
-            IDataProtector _protector;
-
+            readonly IDataProtector _protector;
+            readonly T _data;
             // the 'provider' parameter is provided by DI
-            public Protection(IDataProtectionProvider provider)
+            public Protection(IDataProtectionProvider provider, T data)
             {
                 _protector = provider.CreateProtector("Stage1");
+                _data = data;
             }
 
             public void RunSample()
             {
-                var data = new { user = "Markus", password = "hallo" };
-                var result = JsonConvert.SerializeObject(data);
+                
+                var result = JsonConvert.SerializeObject(_data);
 
                 // protect the payload
                 var protectedPayload = _protector.Protect(result.ToString());
@@ -50,6 +51,12 @@ namespace DataProtector
                     
                 }
             }
+        }
+
+        public class Person
+        {
+            public string Name { get; set; }
+            public string password { get; set; }
         }
 
         
