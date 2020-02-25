@@ -35,8 +35,18 @@ namespace DataProtector
             public string GetEncryptData<T>(T data, string purpose)
             {
                 _protector = _provider.CreateProtector(purpose);
-                string result = JsonConvert.SerializeObject(data);
-                return _protector.Protect(result);
+
+                if (data is object)
+                {
+                    string result = JsonConvert.SerializeObject(data);
+                    return _protector.Protect(result);
+                }
+                else
+                {
+                    return _protector.Protect(Convert.ToString(data));
+                }
+                
+                
             }
 
             public T GetDecryptData<T>(string data, string purpose )
@@ -60,7 +70,6 @@ namespace DataProtector
             {
 
                 Person person = new Person { Name = "markus", Password = "hallo" };
-
                 var result = GetEncryptData<Person>(person, "stage1");
                 Console.WriteLine(result);
 
