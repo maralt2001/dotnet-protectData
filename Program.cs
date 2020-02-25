@@ -13,50 +13,82 @@ namespace DataProtector
             var serviceCollection = new ServiceCollection();
             serviceCollection.AddDataProtection();
             ServiceProvider services = serviceCollection.BuildServiceProvider();
-            var user = new Person { Name = "markus", password = "hallo" };
-            // create an instance of MyClass using the service provider
-            Protection<Person> instance = ActivatorUtilities.CreateInstance<Protection<Person>>(services, user);
+
+            // create an instance of Protection Class using the service provider
+            Protection instance = ActivatorUtilities.CreateInstance<Protection>(services);
             instance.RunSample();
         }
 
-        public class Protection<T>
+        // class accept any kind of data Object
+        public class Protection
         {
-            readonly IDataProtector _protector;
-            readonly T _data;
+            private IDataProtector _protector;
+            private readonly IDataProtectionProvider _provider;
+
             // the 'provider' parameter is provided by DI
-            public Protection(IDataProtectionProvider provider, T data)
+            public Protection(IDataProtectionProvider provider)
             {
-                _protector = provider.CreateProtector("Stage1");
-                _data = data;
+                _provider = provider;
+               
+            }
+
+            public string GetEncryptData<T>(T data, string purpose)
+            {
+                _protector = _provider.CreateProtector(purpose);
+                string result = JsonConvert.SerializeObject(data);
+                return _protector.Protect(result);
+            }
+
+            public T GetDecryptData<T>(string data, string purpose )
+            {
+                try
+                {
+                    _protector = _provider.CreateProtector(purpose);
+                    string unprotectedPayload = _protector.Unprotect(data);
+                    return JsonConvert.DeserializeObject<T>(unprotectedPayload);
+                    
+                }
+                catch (Exception)
+                {
+                    return JsonConvert.DeserializeObject<T>(string.Empty);
+
+                }
+                
             }
 
             public void RunSample()
             {
+
+                Person person = new Person { Name = "markus", Password = "hallo" };
+
+                var result = GetEncryptData<Person>(person, "stage1");
+                Console.WriteLine(result);
+
+                var decrypt = GetDecryptData<Person>(result, "stage1");
                 
-                var result = JsonConvert.SerializeObject(_data);
-
-                // protect the payload
-                var protectedPayload = _protector.Protect(result.ToString());
-                Console.WriteLine($"Protect returned: {protectedPayload}");
-
-                // unprotect the payload
-                try
+                if (decrypt != null)
                 {
-                    string unprotectedPayload = _protector.Unprotect(protectedPayload);
-                    Console.WriteLine($"Unprotect returned: {unprotectedPayload}");
+                    Console.WriteLine(decrypt.AsString());
                 }
-                catch (Exception)
+                else
                 {
-                    Console.WriteLine("Can not decyrpt");
-                    
+                    Console.WriteLine("Something went wrong while decrypt");
                 }
+                
+                Console.ReadLine();
+
+
+
             }
         }
 
         public class Person
         {
             public string Name { get; set; }
-            public string password { get; set; }
+            public string Password { get; set; }
+
+            public string AsString() => $"Name: {this.Name}, Password: {this.Password}";
+            
         }
 
         
